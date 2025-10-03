@@ -1,0 +1,177 @@
+using System;
+using OpenCvSharp;
+
+class Program
+{
+    static Mat CreateGaussKernel(int size, double sigma)
+    {
+        Mat kernelMat = new Mat(size, size, MatType.CV_64FC1, Scalar.All(0));
+        int center = size / 2;
+
+        Console.WriteLine($"Создание матрицы {size}x{size}, Sigma={sigma}");
+        Console.WriteLine($"Центр матрицы: ({center}, {center})");
+
+        for (int i = 0; i < size; i++)
+        {
+            for (int j = 0; j < size; j++)
+            {
+                double x = i;
+                double y = j;
+                double value = (1.0 / (2.0 * Math.PI * sigma * sigma)) *
+                              Math.Exp((-1.0) * ((x - center) * (x - center) + (y - center) * (y - center)) / (2.0 * sigma * sigma));
+                kernelMat.Set<double>(i, j, value);
+            }
+        }
+
+        return kernelMat;
+    }
+
+    static Mat NormalizeKernel(Mat kernelMat)
+    {
+        Scalar sum = Cv2.Sum(kernelMat);
+        Mat normalized = kernelMat / sum.Val0;
+        return normalized;
+    }
+
+    static Mat ApplyGaussFilter(Mat image, Mat kernelMat)
+    {
+        Mat filteredImage = image.Clone();
+
+        int kernelSize = kernelMat.Rows;
+        int padding = kernelSize / 2;
+
+        int height = image.Rows;
+        int width = image.Cols;
+
+        Console.WriteLine($"Размер изображения: {height}x{width}");
+        Console.WriteLine($"Размер ядра: {kernelSize}x{kernelSize}");
+        Console.WriteLine($"Обрабатываемые пиксели: [{padding}:{height - padding}, {padding}:{width - padding}]");
+
+        for (int y = padding; y < height - padding; y++)
+        {
+            for (int x = padding; x < width - padding; x++)
+            {
+                int startY = y - padding;
+                int endY = y + padding + 1;
+                int startX = x - padding;
+                int endX = x + padding + 1;
+
+
+                Mat window = image[new OpenCvSharp.Range(startY, endY), new OpenCvSharp.Range(startX, endX)];
+
+                double newValue = 0;
+                for (int k = 0; k < kernelSize; k++)
+                {
+                    for (int l = 0; l < kernelSize; l++)
+                    {
+                        newValue += window.Get<double>(k, l) * kernelMat.Get<double>(k, l);
+                    }
+                }
+
+                filteredImage.Set<double>(y, x, newValue);
+            }
+        }
+
+        return filteredImage;
+    }
+
+    static void PrintMatrix(Mat matrix, string title)
+    {
+        Console.WriteLine(title);
+        for (int i = 0; i < matrix.Rows; i++)
+        {
+            for (int j = 0; j < matrix.Cols; j++)
+            {
+                Console.Write($"{matrix.Get<double>(i, j):F3} ");
+            }
+            Console.WriteLine();
+        }
+
+        Scalar sum = Cv2.Sum(matrix);
+        Console.WriteLine($"Сумма элементов: {sum.Val0:F3}");
+        Console.WriteLine(new string('-', 40));
+    }
+
+    static void Main(string[] args)
+    {
+        Console.WriteLine("ЗАДАНИЕ 1");
+
+        int[] sizes = { 3, 5, 7 };
+        double sigma = 1.0;
+
+        Mat[] gaussianKernels = new Mat[sizes.Length];
+
+        for (int i = 0; i < sizes.Length; i++)
+        {
+            int size = sizes[i];
+            Mat kernel = CreateGaussKernel(size, sigma);
+            gaussianKernels[i] = kernel;
+
+            PrintMatrix(kernel, $"Матрица Гаусса {size}x{size} (до нормирования):");
+        }
+
+        Console.WriteLine("ЗАДАНИЕ 2");
+
+        Mat[] normalizedKernels = new Mat[sizes.Length];
+
+        for (int i = 0; i < sizes.Length; i++)
+        {
+            int size = sizes[i];
+            Mat originalKernel = gaussianKernels[i];
+            Mat normalizedKernel = NormalizeKernel(originalKernel);
+            normalizedKernels[i] = normalizedKernel;
+
+            PrintMatrix(normalizedKernel, $"Нормированная матрица {size}x{size}:");
+        }
+
+        Console.WriteLine("ЗАДАНИЕ 3-4-5");
+
+
+        Mat pickme = Cv2.ImRead(@"C:\1.jpg");
+        if (pickme.Empty())
+        {
+            Console.WriteLine("Ошибка: не удалось загрузить изображение!");
+            return;
+        }
+
+        Mat pickmeGray = new Mat();
+        Cv2.CvtColor(pickme, pickmeGray, ColorConversionCodes.BGR2GRAY);
+
+
+        Mat pickmeGrayDouble = new Mat();
+        pickmeGray.ConvertTo(pickmeGrayDouble, MatType.CV_64FC1);
+
+
+        Mat opencvFiltered = new Mat();
+        Cv2.GaussianBlur(pickmeGray, opencvFiltered, new Size(7, 7), 5);
+
+
+        Mat customKernel = CreateGaussKernel(7, 5);
+        Mat normalizedCustomKernel = NormalizeKernel(customKernel);
+        Mat myFilteredPickme = ApplyGaussFilter(pickmeGrayDouble, normalizedCustomKernel);
+
+
+        Mat myFilteredDisplay = new Mat();
+        myFilteredPickme.ConvertTo(myFilteredDisplay, MatType.CV_8UC1);
+
+
+        Cv2.ImShow("Original", pickmeGray);
+        Cv2.ImShow("MY GAUSS", myFilteredDisplay);
+        Cv2.ImShow("OpenCV GAUSS", opencvFiltered);
+
+        Cv2.WaitKey(0);
+        Cv2.DestroyAllWindows();
+
+
+        foreach (var mat in gaussianKernels) mat?.Dispose();
+        foreach (var mat in normalizedKernels) mat?.Dispose();
+        pickme.Dispose();
+        pickmeGray.Dispose();
+        pickmeGrayDouble.Dispose();
+        opencvFiltered.Dispose();
+        customKernel.Dispose();
+        normalizedCustomKernel.Dispose();
+        myFilteredPickme.Dispose();
+        myFilteredDisplay.Dispose();
+    }
+}

@@ -97,33 +97,30 @@ def non_maximum_suppression(magnitude, angle):
             direction = get_direction(current_angle)
             
 
-            if direction == 0: 
+            if direction == 0:
+                neighbor1 = magnitude[y + 1, x]
+                neighbor2 = magnitude[y - 1, x]
+            elif direction == 1:  # 22.5
+                neighbor1 = magnitude[y + 1, x - 1]
+                neighbor2 = magnitude[y - 1, x + 1]
+            elif direction == 2:  # 45
                 neighbor1 = magnitude[y, x - 1]
                 neighbor2 = magnitude[y, x + 1]
-            elif direction == 1:  # 22.5
-                neighbor1 = magnitude[y - 1, x + 1]
-                neighbor2 = magnitude[y + 1, x - 1]
-            elif direction == 2:  # 45
-                neighbor1 = magnitude[y - 1, x]
-                neighbor2 = magnitude[y + 1, x]
             elif direction == 3:  # 67.5
                 neighbor1 = magnitude[y - 1, x - 1]
                 neighbor2 = magnitude[y + 1, x + 1]
             elif direction == 4:  # 90
+                neighbor1 = magnitude[y + 1, x]
+                neighbor2 = magnitude[y - 1, x]
+            elif direction == 5:  # 112.5
+                neighbor1 = magnitude[y + 1, x - 1]
+                neighbor2 = magnitude[y - 1, x + 1]
+            elif direction == 6:  # 135
                 neighbor1 = magnitude[y, x - 1]
                 neighbor2 = magnitude[y, x + 1]
-            elif direction == 5:  # 112.5
-                neighbor1 = magnitude[y - 1, x + 1]
-                neighbor2 = magnitude[y + 1, x - 1]
-            elif direction == 6:  # 135
-                neighbor1 = magnitude[y - 1, x]
-                neighbor2 = magnitude[y + 1, x]
             elif direction == 7:  # 157.5
                 neighbor1 = magnitude[y - 1, x - 1]
                 neighbor2 = magnitude[y + 1, x + 1]
-            else:
-                neighbor1 = 0
-                neighbor2 = 0
             
             if current_magnitude >= neighbor1 and current_magnitude >= neighbor2:
                 suppressed[y, x] = current_magnitude
@@ -158,7 +155,7 @@ def get_direction(angle):
         else:  # tg < -0.414
             return 7
 
-def double_threshold_filtering(suppressed_magnitude, low_ratio=0.01, high_ratio=0.10):
+def double_threshold_filtering(suppressed_magnitude, low_ratio=0.03, high_ratio=0.3):
     height, width = suppressed_magnitude.shape
     result = np.zeros((height, width), dtype=np.uint8)
     
